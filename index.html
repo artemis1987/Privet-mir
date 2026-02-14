@@ -2,9 +2,563 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Привет, мир!</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VPS Имитатор</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Courier New', monospace;
+      background: #0a0e27;
+      color: #00ff00;
+      overflow: hidden;
+      height: 100vh;
+    }
+
+    .container {
+      display: flex;
+      height: 100vh;
+      gap: 15px;
+      padding: 15px;
+    }
+
+    .terminal {
+      flex: 1;
+      background: #1a1a2e;
+      border: 2px solid #00ff00;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+    }
+
+    .terminal-header {
+      background: #00ff00;
+      color: #000;
+      padding: 10px 15px;
+      font-weight: bold;
+      border-bottom: 2px solid #00ff00;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-radius: 6px 6px 0 0;
+    }
+
+    .terminal-content {
+      flex: 1;
+      padding: 15px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .terminal-line {
+      margin: 5px 0;
+      display: flex;
+      align-items: center;
+    }
+
+    .prompt {
+      color: #00ff00;
+      font-weight: bold;
+      margin-right: 8px;
+    }
+
+    .command {
+      color: #00ffff;
+    }
+
+    .output {
+      color: #00ff00;
+      margin-left: 20px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .error {
+      color: #ff4444;
+    }
+
+    .input-line {
+      display: flex;
+      align-items: center;
+      margin-top: auto;
+      padding-top: 10px;
+      border-top: 1px solid #00ff00;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: #00ff00;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      outline: none;
+      margin-left: 8px;
+    }
+
+    .sidebar {
+      width: 280px;
+      background: #1a1a2e;
+      border: 2px solid #00ff00;
+      border-radius: 8px;
+      padding: 15px;
+      overflow-y: auto;
+      box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+    }
+
+    .section {
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      color: #00ff00;
+      font-weight: bold;
+      font-size: 16px;
+      margin-bottom: 10px;
+      border-bottom: 1px solid #00ff00;
+      padding-bottom: 5px;
+    }
+
+    .info-item {
+      display: flex;
+      justify-content: space-between;
+      margin: 8px 0;
+      font-size: 12px;
+    }
+
+    .info-label {
+      color: #00ffff;
+    }
+
+    .info-value {
+      color: #00ff00;
+      font-weight: bold;
+    }
+
+    .stat-bar {
+      margin: 8px 0;
+      height: 20px;
+      background: #0a0e27;
+      border: 1px solid #00ff00;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .stat-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #00ff00, #00ffff);
+      transition: width 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding-right: 5px;
+      font-size: 10px;
+      color: #000;
+      font-weight: bold;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      flex: 1;
+      padding: 8px 12px;
+      background: #00ff00;
+      color: #000;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 12px;
+      transition: all 0.3s ease;
+      font-family: 'Courier New', monospace;
+    }
+
+    button:hover {
+      background: #00ffff;
+      transform: scale(1.05);
+      box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+    }
+
+    button:active {
+      transform: scale(0.95);
+    }
+
+    .status-online {
+      color: #00ff00;
+    }
+
+    .status-offline {
+      color: #ff4444;
+    }
+
+    .scrollbar::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .scrollbar::-webkit-scrollbar-track {
+      background: #0a0e27;
+    }
+
+    .scrollbar::-webkit-scrollbar-thumb {
+      background: #00ff00;
+      border-radius: 4px;
+    }
+
+    .scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #00ffff;
+    }
+
+    .glow {
+      animation: glow 1s ease-in-out infinite;
+    }
+
+    @keyframes glow {
+      0%, 100% { text-shadow: 0 0 5px #00ff00; }
+      50% { text-shadow: 0 0 15px #00ff00; }
+    }
+  </style>
 </head>
 <body>
-  <h1>Привет, мир!</h1>
+  <div class="container">
+    <div class="terminal scrollbar" id="terminal">
+      <div class="terminal-header">
+        <span>VPS Terminal - artemis1987</span>
+        <span id="time">14:30:45</span>
+      </div>
+      <div class="terminal-content" id="output"></div>
+      <div class="input-line">
+        <span class="prompt">user@vps:~$</span>
+        <input type="text" id="input" placeholder="Введите команду..." autofocus>
+      </div>
+    </div>
+
+    <div class="sidebar scrollbar">
+      <div class="section">
+        <div class="section-title">📊 Статус Сервера</div>
+        <div class="info-item">
+          <span class="info-label">Статус:</span>
+          <span class="info-value status-online" id="status">● ONLINE</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Uptime:</span>
+          <span class="info-value" id="uptime">45 дн 12:34:56</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">IP-адрес:</span>
+          <span class="info-value">192.168.1.100</span>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">💾 Ресурсы</div>
+        <div class="info-item">
+          <span class="info-label">CPU:</span>
+          <span class="info-value" id="cpu-percent">42%</span>
+        </div>
+        <div class="stat-bar">
+          <div class="stat-fill" id="cpu-bar" style="width: 42%">42%</div>
+        </div>
+
+        <div class="info-item">
+          <span class="info-label">RAM:</span>
+          <span class="info-value" id="ram-percent">58%</span>
+        </div>
+        <div class="stat-bar">
+          <div class="stat-fill" id="ram-bar" style="width: 58%">58%</div>
+        </div>
+
+        <div class="info-item">
+          <span class="info-label">Диск:</span>
+          <span class="info-value" id="disk-percent">76%</span>
+        </div>
+        <div class="stat-bar">
+          <div class="stat-fill" id="disk-bar" style="width: 76%">76%</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">🌐 Сеть</div>
+        <div class="info-item">
+          <span class="info-label">Входящий:</span>
+          <span class="info-value" id="in-traffic">2.3 MB/s</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Исходящий:</span>
+          <span class="info-value" id="out-traffic">1.7 MB/s</span>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">🔧 Процессы</div>
+        <div class="info-item">
+          <span class="info-label">Запущено:</span>
+          <span class="info-value" id="process-count">127</span>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">⚙️ Управление</div>
+        <div class="button-group">
+          <button onclick="restartServer()">Перезагрузка</button>
+          <button onclick="stopServer()">Остановка</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">📝 Помощь</div>
+        <button onclick="showHelp()" style="width: 100%; margin-bottom: 10px;">Справка</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const output = document.getElementById('output');
+    const input = document.getElementById('input');
+    const cpuPercent = document.getElementById('cpu-percent');
+    const ramPercent = document.getElementById('ram-percent');
+    const diskPercent = document.getElementById('disk-percent');
+    const inTraffic = document.getElementById('in-traffic');
+    const outTraffic = document.getElementById('out-traffic');
+    const processCount = document.getElementById('process-count');
+    const timeDisplay = document.getElementById('time');
+
+    let commandHistory = [];
+    let historyIndex = -1;
+
+    const commands = {
+      help: () => showHelp(),
+      clear: () => output.innerHTML = '',
+      whoami: () => addOutput('artemis1987'),
+      date: () => addOutput(new Date().toString()),
+      uname: () => addOutput('Linux vps 5.15.0-x86_64 #1 SMP GNU/Linux'),
+      neofetch: () => addOutput(`
+        ╔═══════════════════════════╗
+        ║  VPS Server Information   ║
+        ╚═══════════════════════════╝
+        OS: Linux
+        Kernel: 5.15.0
+        CPU: 8 cores @ 3.5GHz
+        RAM: 16GB
+        Disk: 500GB SSD
+        Uptime: 45 days
+      `),
+      ls: () => addOutput('bin  boot  dev  etc  home  lib  opt  root  run  tmp  usr  var'),
+      pwd: () => addOutput('/home/artemis1987'),
+      ifconfig: () => addOutput(`
+        eth0: flags=UP,BROADCAST,RUNNING
+        inet 192.168.1.100  netmask 255.255.255.0
+        inet6 fe80::1
+        RX packets: 1,234,567
+        TX packets: 987,654
+      `),
+      ps: () => addOutput(`
+        PID   USER     COMMAND
+        1     root     /sbin/init
+        2     root     [kthreadd]
+        100   apache   /usr/sbin/httpd
+        234   mysql    /usr/sbin/mysqld
+        456   artemis  bash
+      `),
+      top: () => addOutput(`
+        top - 14:30:45 up 45 days
+        Tasks: 127 total
+        %Cpu(s): ${getCPU()}% us
+        KiB Mem : ${getRAM()}% used
+      `),
+      df: () => addOutput(`
+        Filesystem     1K-blocks    Used Available Use%
+        /dev/sda1      536870912 408338277 128532635  76%
+        tmpfs           8388608        0   8388608   0%
+      `),
+      systemctl: (args) => {
+        if (!args) return addOutput('systemctl - Управление сервисами');
+        if (args.includes('status')) return addOutput('● apache2.service - The Apache HTTP Server\n   Loaded: loaded (/lib/systemd/system/apache2.service; enabled)\n   Active: active (running)');
+        return addOutput(`systemctl ${args}: Command executed`);
+      },
+      history: () => {
+        if (commandHistory.length === 0) return addOutput('История пуста');
+        addOutput(commandHistory.map((cmd, i) => `${i + 1}  ${cmd}`).join('\n'));
+      }
+    };
+
+    function addOutput(text, isError = false) {
+      const line = document.createElement('div');
+      line.className = 'terminal-line';
+      const span = document.createElement('span');
+      span.className = isError ? 'output error' : 'output';
+      span.textContent = text;
+      line.appendChild(span);
+      output.appendChild(line);
+      output.parentElement.scrollTop = output.parentElement.scrollHeight;
+    }
+
+    function addCommand(cmd) {
+      const line = document.createElement('div');
+      line.className = 'terminal-line';
+      const prompt = document.createElement('span');
+      prompt.className = 'prompt';
+      prompt.textContent = 'user@vps:~$ ';
+      const command = document.createElement('span');
+      command.className = 'command';
+      command.textContent = cmd;
+      line.appendChild(prompt);
+      line.appendChild(command);
+      output.appendChild(line);
+      output.parentElement.scrollTop = output.parentElement.scrollHeight;
+    }
+
+    function getCPU() {
+      return Math.floor(Math.random() * 80) + 10;
+    }
+
+    function getRAM() {
+      return Math.floor(Math.random() * 40) + 40;
+    }
+
+    function getDisk() {
+      return Math.floor(Math.random() * 30) + 60;
+    }
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const cmd = input.value.trim();
+        input.value = '';
+
+        if (cmd === '') return;
+
+        addCommand(cmd);
+        commandHistory.push(cmd);
+        historyIndex = -1;
+
+        const parts = cmd.split(' ');
+        const command = parts[0].toLowerCase();
+        const args = parts.slice(1).join(' ');
+
+        if (commands[command]) {
+          commands[command](args);
+        } else if (cmd.startsWith('echo ')) {
+          addOutput(cmd.substring(5));
+        } else if (cmd === 'exit') {
+          addOutput('До свидания!');
+          input.disabled = true;
+        } else {
+          addOutput(`bash: ${command}: команда не найдена`, true);
+        }
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (historyIndex < commandHistory.length - 1) {
+          historyIndex++;
+          input.value = commandHistory[commandHistory.length - 1 - historyIndex];
+        }
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (historyIndex > 0) {
+          historyIndex--;
+          input.value = commandHistory[commandHistory.length - 1 - historyIndex];
+        } else if (historyIndex === 0) {
+          historyIndex--;
+          input.value = '';
+        }
+      }
+    });
+
+    function updateStats() {
+      const cpu = getCPU();
+      const ram = getRAM();
+      const disk = getDisk();
+
+      cpuPercent.textContent = cpu + '%';
+      document.getElementById('cpu-bar').style.width = cpu + '%';
+      document.getElementById('cpu-bar').textContent = cpu + '%';
+
+      ramPercent.textContent = ram + '%';
+      document.getElementById('ram-bar').style.width = ram + '%';
+      document.getElementById('ram-bar').textContent = ram + '%';
+
+      diskPercent.textContent = disk + '%';
+      document.getElementById('disk-bar').style.width = disk + '%';
+      document.getElementById('disk-bar').textContent = disk + '%';
+
+      inTraffic.textContent = (Math.random() * 5).toFixed(1) + ' MB/s';
+      outTraffic.textContent = (Math.random() * 3).toFixed(1) + ' MB/s';
+      processCount.textContent = Math.floor(Math.random() * 50) + 100;
+    }
+
+    function updateTime() {
+      const now = new Date();
+      timeDisplay.textContent = now.toLocaleTimeString('ru-RU');
+    }
+
+    function showHelp() {
+      const helpText = `
+Доступные команды:
+  help      - Справка
+  clear     - Очистить экран
+  whoami    - Показать текущего пользователя
+  date      - Показать дату и время
+  uname     - Информация о системе
+  neofetch  - Красивая информация о сервере
+  ls        - Список файлов
+  pwd       - Текущая директория
+  ifconfig  - Информация о сети
+  ps        - Запущенные процессы
+  top       - Монитор системы
+  df        - Использование диска
+  history   - История команд
+  echo      - Вывести текст
+  exit      - Выход
+      `;
+      addOutput(helpText);
+    }
+
+    function restartServer() {
+      addCommand('systemctl restart server');
+      addOutput('⚠️  Сервер перезагружается...');
+      input.disabled = true;
+      setTimeout(() => {
+        output.innerHTML = '';
+        addOutput('✓ Сервер успешно перезагружен');
+        input.disabled = false;
+        input.focus();
+      }, 3000);
+    }
+
+    function stopServer() {
+      if (confirm('Вы уверены? Сервер будет остановлен.')) {
+        addCommand('systemctl stop server');
+        addOutput('Остановка сервера...');
+        input.disabled = true;
+        setTimeout(() => {
+          document.getElementById('status').textContent = '● OFFLINE';
+          document.getElementById('status').className = 'info-value status-offline';
+          addOutput('Сервер остановлен');
+        }, 2000);
+      }
+    }
+
+    // Инициализация
+    addOutput('╔════════════════════════════════════════════════════════════╗');
+    addOutput('║          Добро пожаловать в VPS Имитатор                  ║');
+    addOutput('║  artemis1987/Privet-mir - Virtual Private Server Demo     ║');
+    addOutput('╚════════════════════════════════════════════════════════════╝');
+    addOutput('');
+    addOutput('Введите "help" для справки по командам\n');
+    
+    updateStats();
+    setInterval(updateStats, 2000);
+    updateTime();
+    setInterval(updateTime, 1000);
+  </script>
 </body>
-</html> 
+</html>
