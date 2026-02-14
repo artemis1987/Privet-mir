@@ -1,0 +1,49 @@
+name: "24x Workers Controller"
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'   # каждые 10 минут
+  workflow_dispatch:
+
+jobs:
+  run-workers:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        worker: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install jq
+        run: sudo apt-get install jq
+
+      - name: Run worker ${{ matrix.worker }}
+        run: |
+          TASKS=$(cat tasks.json)
+          TASK=$(echo "$TASKS" | jq -c ".[] | select(.target_file==\"worker${{ matrix.worker }}.log\") | select(.status==\"pending\")" | head -n1)
+          if [ "$TASK" = "" ]; then
+            echo "No pending task for worker${{ matrix.worker }}.log"
+            exit 0
+          fi
+          CONTENT=$(echo "$TASK" | jq -r ".content")
+          echo "$CONTENT" > "worker${{ matrix.worker }}.log"
+          # Обновление tasks.json (отметить задачу как выполненную)
+          TASK_ID=$(echo "$TASK" | jq -r ".id")
+          jq "map(if .id==\"$TASK_ID\" then .status=\"done\" else . end)" tasks.json > tasks2.json && mv tasks2.json tasks.json
+          echo "Worker ${{ matrix.worker }} completed task $TASK_ID" >> worker.log
+
+      - name: Commit & Push
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add worker*.log tasks.json
+          git commit -m "worker${{ matrix.worker }} обновил свои файлы"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
