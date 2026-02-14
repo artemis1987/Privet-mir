@@ -1,1 +1,0 @@
-[{\n  \"id\": \"task-1\",\n  \"target_file\": \"worker1.log\",\n  \"content\": \"Это тестовая задача для worker 1\",\n  \"status\": \"pending\"\n}]
