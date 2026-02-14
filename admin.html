@@ -4,25 +4,19 @@
     <title>🤖 AI GitHub Admin</title>
     <style>
         body { background: #0d1117; color: white; font-family: sans-serif; padding: 20px; }
-        .container { max-width: 1000px; margin: auto; }
+        .container { max-width: 800px; margin: auto; }
         .card { background: #161b22; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
         textarea, input { width: 100%; padding: 10px; margin: 10px 0; background: #0d1117; color: white; border: 1px solid #30363d; }
         button { background: #238636; color: white; border: none; padding: 10px 20px; cursor: pointer; margin: 5px; }
         .flex { display: flex; gap: 10px; flex-wrap: wrap; }
-        .message { padding: 10px; margin: 5px 0; border-radius: 5px; }
-        .ai { background: #21262d; }
-        .success { color: #2ea043; }
-        .file-item { padding: 8px; background: #0d1117; margin: 5px 0; cursor: pointer; border: 1px solid #30363d; }
-        .file-item:hover { background: #21262d; }
+        .error { color: #ff7b72; background: #3d1f1f; padding: 10px; border-radius: 5px; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="card">
             <h2>🤖 AI GitHub Admin</h2>
-            <p class="success">🔒 Токены сохраняются в браузере</p>
-            
-            <input type="password" id="ghToken" placeholder="GitHub токен (ghp_...)" value="">
+            <input type="password" id="ghToken" placeholder="GitHub токен" value="">
             <input type="password" id="orToken" placeholder="OpenRouter ключ" value="">
             <button onclick="saveTokens()">💾 Сохранить токены</button>
         </div>
@@ -30,7 +24,6 @@
         <div class="card">
             <div class="flex">
                 <button onclick="listFiles()">📋 Список файлов</button>
-                <button onclick="runWorkflow('test')">🔄 Тест workflow</button>
                 <button onclick="deploySite()">🚀 Задеплоить сайт</button>
             </div>
             <div id="fileList"></div>
@@ -40,14 +33,7 @@
             <h3>🤖 AI Команды</h3>
             <textarea id="aiInput" rows="3" placeholder="Напиши что нужно сделать..."></textarea>
             <button onclick="aiCommand()">🚀 Выполнить</button>
-            <div id="aiResponse" class="message ai"></div>
-        </div>
-
-        <div class="card">
-            <h3>📁 Создать файл</h3>
-            <input id="fileName" placeholder="Имя файла">
-            <textarea id="fileContent" rows="5" placeholder="Содержимое"></textarea>
-            <button onclick="createFile()">✅ Создать</button>
+            <div id="aiResponse"></div>
         </div>
     </div>
 
@@ -68,7 +54,6 @@
             return localStorage.getItem('or_token') || document.getElementById('orToken').value;
         }
 
-        // AI САМ ВСЕ ДЕЛАЕТ
         async function aiCommand() {
             const text = document.getElementById('aiInput').value;
             if (!text) return;
@@ -76,10 +61,9 @@
             const orKey = getOR();
             if (!orKey) { alert('Введи OpenRouter ключ'); return; }
             
-            document.getElementById('aiResponse').innerHTML = '⏳ AI думает...';
+            document.getElementById('aiResponse').innerHTML = '⏳ Думаю...';
             
             try {
-                // AI анализирует задачу
                 const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
                     method: 'POST',
                     headers: {
@@ -88,80 +72,84 @@
                     },
                     body: JSON.stringify({
                         model: 'openai/gpt-3.5-turbo',
-                        messages: [{
-                            role: 'system',
-                            content: 'Ты AI админ. Анализируй задачу и отвечай JSON. Доступные действия: create_file, update_file, delete_file, deploy, run_workflow, list_files'
-                        }, {
-                            role: 'user',
-                            content: text
-                        }]
+                        messages: [{ role: 'user', content: text }]
                     })
                 });
                 
                 const data = await res.json();
-                const answer = data.choices[0].message.content;
                 
-                // Пытаемся выполнить действие
-                if (answer.includes('create_file') || text.includes('создай')) {
-                    const fileName = prompt('Имя файла:', 'test.txt');
-                    const content = prompt('Содержимое:', 'Hello World');
-                    if (fileName && content) {
-                        await createFile(fileName, content);
-                        document.getElementById('aiResponse').innerHTML = '✅ Файл создан!';
+                // ПРОВЕРЯЕМ что ответ есть
+                if (data.choices && data.choices[0]) {
+                    const answer = data.choices[0].message.content;
+                    document.getElementById('aiResponse').innerHTML = `<div style="background:#21262d; padding:10px;">🤖 ${answer}</div>`;
+                    
+                    // AI сам создаст сайт если попросили
+                    if (text.includes('сайт') && text.includes('клининг')) {
+                        createWebsite();
                     }
-                }
-                else if (answer.includes('deploy') || text.includes('деплой')) {
-                    await deploySite();
-                    document.getElementById('aiResponse').innerHTML = '🚀 Деплой запущен!';
-                }
-                else if (answer.includes('list') || text.includes('список')) {
-                    await listFiles();
-                    document.getElementById('aiResponse').innerHTML = '📋 Список обновлен';
-                }
-                else {
-                    document.getElementById('aiResponse').innerHTML = `🤖 ${answer}`;
+                } else {
+                    document.getElementById('aiResponse').innerHTML = `<div class="error">❌ Ошибка ответа: ${JSON.stringify(data)}</div>`;
                 }
                 
             } catch (e) {
-                document.getElementById('aiResponse').innerHTML = `❌ ${e.message}`;
+                document.getElementById('aiResponse').innerHTML = `<div class="error">❌ ${e.message}</div>`;
             }
         }
 
-        // Работа с файлами
-        async function listFiles() {
+        // СОЗДАЕМ САЙТ ДЛЯ КЛИНИНГА
+        async function createWebsite() {
             const token = getToken();
-            if (!token) { alert('Нет токена'); return; }
+            if (!token) { alert('Нет GitHub токена'); return; }
             
-            const res = await fetch(`https://api.github.com/repos/${REPO}/git/trees/main?recursive=1`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const html = `<!DOCTYPE html>
+<html>
+<head>
+    <title>Клининг Уфа</title>
+    <style>
+        body { font-family: Arial; margin: 0; padding: 20px; background: #f5f5f5; }
+        .header { background: #2196f3; color: white; padding: 20px; text-align: center; }
+        .services { display: grid; grid-template-columns: repeat(3,1fr); gap: 20px; padding: 20px; }
+        .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .price { color: #2196f3; font-size: 24px; font-weight: bold; }
+        button { background: #2196f3; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
+        footer { background: #333; color: white; text-align: center; padding: 20px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Клининг Уфа</h1>
+        <p>Профессиональная уборка в Уфе</p>
+    </div>
+    
+    <div class="services">
+        <div class="card">
+            <h3>Уборка квартир</h3>
+            <p>Генеральная уборка</p>
+            <div class="price">3000 ₽</div>
+            <button>Заказать</button>
+        </div>
+        <div class="card">
+            <h3>Уборка офисов</h3>
+            <p>Ежедневная поддержка</p>
+            <div class="price">5000 ₽</div>
+            <button>Заказать</button>
+        </div>
+        <div class="card">
+            <h3>Мойка окон</h3>
+            <p>Отмываем до блеска</p>
+            <div class="price">2000 ₽</div>
+            <button>Заказать</button>
+        </div>
+    </div>
+    
+    <footer>
+        <p>Клининг Уфа | Телефон: +7 (999) 123-45-67</p>
+    </footer>
+</body>
+</html>`;
             
-            const data = await res.json();
-            let html = '';
-            data.tree?.forEach(item => {
-                if (item.type === 'blob') {
-                    html += `<div class="file-item" onclick="viewFile('${item.path}')">📄 ${item.path}</div>`;
-                }
-            });
-            document.getElementById('fileList').innerHTML = html;
-        }
-
-        async function viewFile(path) {
-            const token = getToken();
-            const res = await fetch(`https://api.github.com/repos/${REPO}/contents/${path}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const data = await res.json();
-            document.getElementById('fileContent').value = atob(data.content);
-            document.getElementById('fileName').value = path;
-        }
-
-        async function createFile(name, content) {
-            const token = getToken();
-            const fileName = name || document.getElementById('fileName').value;
-            const fileContent = content || document.getElementById('fileContent').value;
-            
-            const check = await fetch(`https://api.github.com/repos/${REPO}/contents/${fileName}`, {
+            // Создаем файл index.html
+            const check = await fetch(`https://api.github.com/repos/${REPO}/contents/index.html`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             
@@ -171,51 +159,55 @@
                 sha = data.sha;
             }
             
-            const res = await fetch(`https://api.github.com/repos/${REPO}/contents/${fileName}`, {
+            const res = await fetch(`https://api.github.com/repos/${REPO}/contents/index.html`, {
                 method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    message: 'AI: ' + fileName,
-                    content: btoa(unescape(encodeURIComponent(fileContent))),
+                    message: 'Создан сайт клининга',
+                    content: btoa(unescape(encodeURIComponent(html))),
                     branch: 'main',
                     sha: sha
                 })
             });
             
-            if (res.ok) alert('✅ Файл создан!');
+            if (res.ok) {
+                document.getElementById('aiResponse').innerHTML += '<br>✅ Сайт создан!';
+                deploySite();
+            }
         }
 
-        // Деплой
         async function deploySite() {
             const token = getToken();
             await fetch(`https://api.github.com/repos/${REPO}/pages/builds`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            alert('🚀 Деплой запущен! Через минуту сайт обновится');
+            alert('🚀 Сайт будет доступен через минуту на https://artemis1987.github.io/Privet-mir/');
         }
 
-        // Запуск workflow
-        async function runWorkflow(action) {
+        async function listFiles() {
             const token = getToken();
-            await fetch(`https://api.github.com/repos/${REPO}/actions/workflows/ai-proxy.yml/dispatches`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    ref: 'main',
-                    inputs: { action: action, data: '{}' }
-                })
+            if (!token) { alert('Нет токена'); return; }
+            
+            const res = await fetch(`https://api.github.com/repos/${REPO}/git/trees/main?recursive=1`, {
+                headers: { 'Authorization': `Bearer ${token}` }
             });
-            alert('✅ Workflow запущен');
+            
+            const data = await res.json();
+            let html = '<div style="margin-top:10px;">';
+            data.tree?.forEach(item => {
+                if (item.type === 'blob') {
+                    html += `<div style="padding:5px; background:#0d1117; margin:2px;">📄 ${item.path}</div>`;
+                }
+            });
+            html += '</div>';
+            document.getElementById('fileList').innerHTML = html;
         }
 
-        // Загружаем сохраненные токены
+        // Загружаем токены
         document.getElementById('ghToken').value = localStorage.getItem('gh_token') || '';
         document.getElementById('orToken').value = localStorage.getItem('or_token') || '';
     </script>
